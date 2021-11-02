@@ -1,6 +1,7 @@
 import type {NextApiRequest, NextApiResponse} from 'next';
 import { dbConnect } from '../../middlewares/dbConnect';
 import { jwtValidator } from '../../middlewares/jwtValidator';
+import { corsPolicy } from '../../middlewares/corsPolicy';
 import { TaskModel } from '../../models/TaskModel';
 import { DefaultResponse } from '../../types/DefaultResponse';
 import { GetTasksRequest } from '../../types/GetTasksRequest';
@@ -9,15 +10,20 @@ import { TaskRequest } from '../../types/TaskRequest';
 
 const handler = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse | Task []>) => {
     try{
+        let userId = req.body?.userId;
+        if(!userId){
+            userId = req.query?.userId as string;
+        }
+
         switch(req.method){
             case 'POST':
-                return await saveTask(req, res);
+                return await saveTask(req, res, userId);
             case 'PUT':
-                return await updateTask(req, res);
+                return await updateTask(req, res, userId);
             case 'DELETE':
-                return await deleteTask(req, res);
+                return await deleteTask(req, res, userId);
             case 'GET':
-                return await getTasks(req, res);
+                return await getTasks(req, res, userId);
             default :
                 break;
         }
@@ -29,7 +35,7 @@ const handler = async ( req : NextApiRequest, res : NextApiResponse<DefaultRespo
     }
 }
 
-const validateBody = (obj : TaskRequest, userId : string) => {
+const validateBody = (obj : TaskRequest, userId : string | null | undefined) => {
     if(!obj.name || obj.name.length < 3){
         return 'Nome da tarefa invalido.';
     }
@@ -43,17 +49,16 @@ const validateBody = (obj : TaskRequest, userId : string) => {
     }
 }
 
-const saveTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>) => {
+const saveTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>, userId : string | null | undefined) => {
     const obj : TaskRequest = req.body;
-    const userId = req.body?.userId;
-
+    
     const msgValidation = validateBody(obj, userId);
     if(msgValidation){
         return res.status(400).json({ error: msgValidation});
     }
 
     const task : Task = {
-        userId,
+        userId: userId as string,
         name: obj.name,
         finishPrevisionDate : obj.finishPrevisionDate
     };
@@ -81,10 +86,9 @@ const validateAndReturnTaskFound = async (req : NextApiRequest, userId : string 
     return taskFound;
 }
 
-const updateTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>) => {
+const updateTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>, userId : string | null | undefined) => {
     const obj : Task = req.body;
-    const userId = req.body?.userId;
-
+    
     const taskFound = await validateAndReturnTaskFound(req, userId);
     if(!taskFound){
         return res.status(400).json({ error: 'Tarefa nao encontrada'});
@@ -103,8 +107,7 @@ const updateTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultRe
     return res.status(200).json({ message: 'Tarefa alterada com sucesso.'});
 }
 
-const deleteTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>) => {
-    const userId = req.query?.userId as string;
+const deleteTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse>, userId : string | null | undefined) => {
     const taskFound = await validateAndReturnTaskFound(req, userId);
     if(!taskFound){
         return res.status(400).json({ error: 'Tarefa nao encontrada'});
@@ -114,8 +117,7 @@ const deleteTask = async ( req : NextApiRequest, res : NextApiResponse<DefaultRe
     return res.status(200).json({ message: 'Tarefa deletada com sucesso.'});
 }
 
-const getTasks = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse | Task[]>) => {
-    const userId = req.query?.userId as string;
+const getTasks = async ( req : NextApiRequest, res : NextApiResponse<DefaultResponse | Task[]>, userId : string | null | undefined) => {
     const params : GetTasksRequest = req.query;
 
     const query = {
@@ -151,4 +153,4 @@ const getTasks = async ( req : NextApiRequest, res : NextApiResponse<DefaultResp
     return res.status(200).json(result);
 }
 
-export default dbConnect(jwtValidator(handler));
+export default corsPolicy(dbConnect(jwtValidator(handler)));

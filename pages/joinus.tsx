@@ -1,9 +1,9 @@
 import type { NextPage } from 'next'
 import { useEffect, useState } from 'react';
-import { Login } from '../containers/Login';
 import { Home } from '../containers/Home';
+import { Register } from '../containers/Register';
 
-const Index: NextPage = () => {
+const JoinUs: NextPage = () => {
   const [accessToken, setToken] = useState('');
 
   useEffect(() => {
@@ -15,7 +15,7 @@ const Index: NextPage = () => {
     }
   }, []);
 
-  return (accessToken ? <Home setToken={setToken} /> : <Login setToken={setToken} />)
+  return (accessToken ? <Home setToken={setToken} /> : <Register setToken={setToken} />)
 }
 
-export default Index
+export default JoinUs
